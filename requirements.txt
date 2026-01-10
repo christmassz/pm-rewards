@@ -1,0 +1,4 @@
+# Core dependencies for Polymarket Liquidity Rewards Auto-MM
+py-clob-client==0.34.4
+requests>=2.28.0
+pyyaml>=6.0

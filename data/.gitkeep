@@ -1,0 +1,2 @@
+# This file ensures the data/ directory is tracked by git
+# Data files like target_markets.json and pm_mm.db will be created here

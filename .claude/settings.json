@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/Users/jo/.claude/plugins/marketplaces/claude-code-plugins/plugins/ralph-wiggum/scripts/setup-ralph-loop.sh:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

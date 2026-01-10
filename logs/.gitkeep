@@ -1,0 +1,2 @@
+# This file ensures the logs/ directory is tracked by git
+# JSONL log files like selector.jsonl and maker.jsonl will be created here
