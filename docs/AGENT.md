@@ -127,3 +127,19 @@ Only output `DONE` if:
 
 * All D1–D6 deliverables are complete and verified, AND
 * `PROGRESS.md` contains an appended entry documenting each deliverable verification command and output.
+
+6. If and only if the deliverable is complete and verified:
+
+   6a) Stage all changes:
+       git add -A
+
+   6b) Confirm the staged diff is only related to the completed task:
+       git diff --staged
+
+   6c) Commit with a message tied to the task ID (use the exact task ID):
+       git commit -m "T# <short description>"
+
+ Commit rule:
+- Never commit unless a single Granular Task (T#) deliverable is fully verified.
+- One commit per task. Do not bundle multiple tasks into one commit.
+- The commit message must start with the task ID (e.g., "T2 ...").

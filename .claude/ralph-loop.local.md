@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 1
+iteration: 3
 max_iterations: 20
 completion_promise: "<promise>T1_COMPLETE</promise>"
 started_at: "2026-01-10T23:43:04Z"

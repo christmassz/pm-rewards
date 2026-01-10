@@ -1,7 +1,43 @@
 {
+  "defaultMode": "acceptEdits",
   "permissions": {
     "allow": [
-      "Bash(/Users/jo/.claude/plugins/marketplaces/claude-code-plugins/plugins/ralph-wiggum/scripts/setup-ralph-loop.sh:*)"
+      "Bash(/Users/jo/.claude/plugins/marketplaces/claude-code-plugins/plugins/ralph-wiggum/scripts/setup-ralph-loop.sh:*)",
+
+      "Edit(/path/to/PM-REWARDS/**)",
+
+      "Bash(cd /path/to/PM-REWARDS:*)",
+
+      "Bash(pwd:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(sed:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(pip:*)",
+      "Bash(pip3:*)",
+      "Bash(python -m src.selector:*)",
+      "Bash(python -m src.maker:*)",
+      "Bash(python -m src.main:*)",
+      "Bash(pytest:*)",
+
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(rm:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "ask": []
