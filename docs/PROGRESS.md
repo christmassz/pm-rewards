@@ -224,3 +224,40 @@
 **Next deliverable**
 
 * D5: CLOB read-only utilities + midpoint proxy (T5)
+
+---
+
+### 2026-01-11T15:13:39Z — T5 CLOB read-only utilities + midpoint proxy completed
+
+**Goal for this increment**
+
+* Implement CLOB read-only utilities with py-clob-client for order book fetching, size-cutoff midpoint proxy computation, and tick rounding functionality.
+
+**Deliverables completed**
+
+* T5: CLOB read-only utilities + midpoint proxy
+
+**Changes (files)**
+
+* src/clob_utils.py (created with create_readonly_clob_client, fetch_order_book, compute_midpoint_proxy, get_best_bid_ask, get_tick_size, round_to_tick functions)
+* src/maker.py (created with cmd_paper_one supporting --paper-one --slug commands, reads from data/target_markets.json)
+* src/__main__.py (updated to support maker subcommand routing)
+
+**Commands run**
+
+* python -m src maker --paper-one --slug "will-trump-nominate-bill-pulte-as-the-next-fed-chair"
+
+**Observed output**
+
+* Successfully fetched order books for Yes/No tokens; printed YES/NO mids and best bid/ask in SUMMARY section; computed midpoint proxies (None due to one-sided books); appended one JSONL line to logs/maker.jsonl with kind="paper_one"
+
+**Artifacts produced**
+
+* src/clob_utils.py with CLOB utilities
+* src/maker.py with paper-one functionality
+* src/__main__.py updated for maker routing
+* logs/maker.jsonl (with paper_one entry)
+
+**Next deliverable**
+
+* D6: Maker paper loop (low churn decisions) (T6)

@@ -1,0 +1,2 @@
+{"ts": 1768090335.9143271, "kind": "paper_one", "slug": "will-trump-nominate-bill-pulte-as-the-next-fed-chair", "status": "error", "error": "'OrderBookSummary' object has no attribute 'get'"}
+{"ts": 1768090419.197827, "kind": "paper_one", "slug": "will-trump-nominate-bill-pulte-as-the-next-fed-chair", "status": "success", "mids": {"Yes": null, "No": null}, "best_bid_ask": {"Yes": {"bid": null, "ask": 0.999}, "No": {"bid": 0.001, "ask": null}}, "elapsed_sec": 0.6396021842956543, "rewards_min_size": 20}
