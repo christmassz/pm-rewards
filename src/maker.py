@@ -322,6 +322,18 @@ def cmd_paper_loop(args) -> None:
 
         print(f"\\nPaper loop completed: {loop_count} iterations in {elapsed_total:.1f}s")
 
+        # Log shutdown
+        shutdown_record = {
+            'ts': time.time(),
+            'kind': 'shutdown',
+            'slug': args.slug,
+            'condition_id': condition_id,
+            'loop_count': loop_count,
+            'elapsed_sec': elapsed_total,
+            'shutdown_reason': 'signal' if shutdown[0] else 'time_limit'
+        }
+        append_jsonl('logs/maker.jsonl', shutdown_record)
+
     except Exception as e:
         print(f"ERROR: Paper loop failed: {e}")
         error_record = {

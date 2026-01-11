@@ -484,3 +484,40 @@
 * D12: Clean shutdown behavior (paper + live) (T12)
 
 ---
+
+### 2026-01-11T17:11:05Z — T12 Clean shutdown behavior (paper + live) completed
+
+**Goal for this increment**
+
+* Implement SIGINT/SIGTERM signal handling for clean shutdown with proper logging in both paper and live modes.
+
+**Deliverables completed**
+
+* T12: Clean shutdown behavior (paper + live)
+
+**Changes (files)**
+
+* src/maker.py (added shutdown logging to cmd_paper_loop function; appends shutdown record with kind="shutdown" when loop exits via signal or time limit)
+
+**Commands run**
+
+* python -m src.maker --paper-loop --slug "will-trump-nominate-bill-pulte-as-the-next-fed-chair" --seconds 3
+* python -m src.maker --paper-loop --slug "will-trump-nominate-bill-pulte-as-the-next-fed-chair" --seconds 10 (with SIGINT after 3 seconds)
+
+**Observed output**
+
+* Paper loop with time limit: process completed cleanly after 3 seconds; printed "Paper loop completed: 2 iterations in 3.4s"; appended shutdown log with kind="shutdown" and shutdown_reason="time_limit"
+* Paper loop with SIGINT: process received signal, printed "Received interrupt signal, shutting down gracefully..."; completed cleanly; appended shutdown log with kind="shutdown" and shutdown_reason="signal"
+* Both tests show one shutdown line appended to logs/maker.jsonl with proper kind field
+
+**Artifacts produced**
+
+* Enhanced src/maker.py with shutdown logging functionality
+* logs/maker.jsonl entries with kind="shutdown" for both time_limit and signal shutdown scenarios
+* Signal handling maintains clean exit behavior while adding required logging
+
+**Next deliverable**
+
+* D13: Final integration and testing complete (All deliverables D1-D12 satisfied)
+
+---
