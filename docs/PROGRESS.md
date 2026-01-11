@@ -369,3 +369,41 @@
 * D9: Config file and loader (single source of truth) (T9)
 
 ---
+
+### 2026-01-11T16:51:30Z — T9 Config file and loader (single source of truth) completed
+
+**Goal for this increment**
+
+* Implement src/config.py to load YAML configuration, validate required keys, and provide typed config object with --print-config command support.
+
+**Deliverables completed**
+
+* T9: Config file and loader (single source of truth)
+
+**Changes (files)**
+
+* src/config.py (created with Config, QuoteConfig, NetConfig, LiveConfig dataclasses, load_config function with YAML loading and validation, load_config_or_default with fallback to defaults, get_default_config function, format_config_for_display with secret redaction)
+* src/selector.py (appended cmd_print_config function, added --print-config CLI option, added config import)
+* config.yaml (created from config.yaml.example)
+
+**Commands run**
+
+* python -m src selector --print-config
+
+**Observed output**
+
+* Successfully loaded and validated configuration from config.yaml; printed complete configuration with all sections (capital allocation, market filtering, timing parameters, quote parameters, network parameters, live mode parameters); showed "(secrets redacted)" note; proper error handling for invalid YAML and missing required keys tested and working
+
+**Artifacts produced**
+
+* src/config.py with typed configuration loading and validation
+* config.yaml configuration file
+* --print-config command in selector CLI
+* Comprehensive validation of all required configuration keys
+* Error handling for malformed YAML and missing keys
+
+**Next deliverable**
+
+* D10: Append-only log helper (JSONL contract) (T10)
+
+---

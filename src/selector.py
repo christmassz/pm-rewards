@@ -14,6 +14,7 @@ import os
 from datetime import datetime, timedelta
 
 from . import gamma
+from . import config
 
 
 def setup_logging():
@@ -474,6 +475,33 @@ def cmd_select_top(args) -> None:
     append_jsonl('logs/selector.jsonl', select_record)
 
 
+def cmd_print_config(args) -> None:
+    """
+    Print validated configuration values.
+
+    Loads configuration and displays all values with secrets redacted.
+    """
+    print("Loading and validating configuration...")
+
+    try:
+        # Try to load config.yaml, fall back to defaults if not found
+        cfg = config.load_config_or_default()
+
+        print("✓ Configuration loaded successfully")
+        print()
+
+        # Display formatted config
+        config_display = config.format_config_for_display(cfg, redact_secrets=True)
+        print(config_display)
+
+    except Exception as e:
+        print(f"ERROR: Failed to load configuration: {e}")
+        print()
+        print("To create a config file:")
+        print("  cp config.yaml.example config.yaml")
+        print("  # Edit config.yaml as needed")
+
+
 def main():
     """Main entry point for selector CLI."""
     setup_logging()
@@ -521,6 +549,13 @@ def main():
         help='Write results to data/target_markets.json (use with --select-top)'
     )
 
+    # Print config
+    parser.add_argument(
+        '--print-config',
+        action='store_true',
+        help='Print validated configuration values (redacting secrets)'
+    )
+
     args = parser.parse_args()
 
     if args.gamma_smoke:
@@ -529,6 +564,8 @@ def main():
         cmd_list_eligible(args)
     elif args.select_top:
         cmd_select_top(args)
+    elif args.print_config:
+        cmd_print_config(args)
     else:
         parser.print_help()
 
