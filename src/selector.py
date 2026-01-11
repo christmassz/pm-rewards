@@ -8,6 +8,7 @@ import argparse
 import json
 import time
 import logging
+import math
 from typing import Dict, List, Any, Optional
 import os
 from datetime import datetime, timedelta
@@ -46,6 +47,12 @@ def get_default_config() -> Dict[str, Any]:
         'exclude_restricted': True,
         'end_date_buffer_days': 7,
         'min_volume24h': 500.0,
+        # Capital parameters
+        'total_cap_usdc': 1000.0,
+        'usable_cap_frac': 0.85,
+        'num_markets': 3,
+        # Quote parameters
+        'size_buffer': 1.1,
     }
 
 
@@ -72,6 +79,72 @@ def parse_outcome_token_map(market: Dict[str, Any]) -> Dict[str, str]:
         return {}
 
     return dict(zip(outcomes, clob_token_ids))
+
+
+def compute_cap_feasibility(market: Dict[str, Any], cfg: Dict[str, Any]) -> Dict[str, float]:
+    """
+    Compute capital feasibility metrics for a market.
+
+    Returns dict with:
+    - q: size_buffer * rewardsMinSize
+    - cap_est: 3.0 * q
+    - per_market_cap: usable_cap / num_markets
+    - feasible: bool (cap_est <= per_market_cap)
+    """
+    size_buffer = cfg.get('size_buffer', 1.1)
+    rewards_min_size = market.get('rewardsMinSize', 0)
+
+    q = size_buffer * rewards_min_size
+    cap_est = 3.0 * q
+
+    total_cap = cfg.get('total_cap_usdc', 1000.0)
+    usable_cap_frac = cfg.get('usable_cap_frac', 0.85)
+    num_markets = cfg.get('num_markets', 3)
+
+    usable_cap = total_cap * usable_cap_frac
+    per_market_cap = usable_cap / num_markets
+
+    return {
+        'q': q,
+        'cap_est': cap_est,
+        'per_market_cap': per_market_cap,
+        'feasible': cap_est <= per_market_cap
+    }
+
+
+def compute_market_score(market: Dict[str, Any], cap_feasibility: Dict[str, float]) -> float:
+    """
+    Compute stability-first market score from PRD section 8.
+
+    Score formula:
+    score =
+      + 2.0*log1p(max_spread*100)
+      + log1p(vol24)
+      + 0.5*log1p(liq)
+      - 4.0*one_hour
+      - 1.5*competitive
+      - 0.8*(cap_est/per_market_cap)
+    """
+    max_spread = market.get('rewardsMaxSpread', 0.0)
+    one_hour = abs(market.get('oneHourPriceChange', 0.0))
+    competitive = market.get('competitive', 0.0)
+    vol24 = market.get('volume24hrClob', 0.0)
+    liq = market.get('liquidityClob', 0.0)
+
+    cap_est = cap_feasibility['cap_est']
+    per_market_cap = cap_feasibility['per_market_cap']
+
+    # Compute score components
+    spread_term = 2.0 * math.log1p(max_spread * 100)
+    vol_term = math.log1p(vol24)
+    liq_term = 0.5 * math.log1p(liq)
+    hour_term = -4.0 * one_hour
+    comp_term = -1.5 * competitive
+    cap_term = -0.8 * (cap_est / per_market_cap if per_market_cap > 0 else 0)
+
+    score = spread_term + vol_term + liq_term + hour_term + comp_term + cap_term
+
+    return score
 
 
 def reward_eligible(market: Dict[str, Any], cfg: Dict[str, Any]) -> bool:
@@ -267,6 +340,140 @@ def cmd_list_eligible(args) -> None:
     append_jsonl('logs/selector.jsonl', eligible_record)
 
 
+def cmd_select_top(args) -> None:
+    """
+    Select top N markets by scoring and optionally write to data/target_markets.json.
+
+    This implements the full selector pipeline: eligibility filtering, cap feasibility,
+    scoring, and selection of top N markets.
+    """
+    print(f"Running market selector: scoring and selecting top markets...")
+
+    cfg = get_default_config()
+    num_markets = cfg.get('num_markets', 3)
+    markets_fetched = 0
+    eligible_markets = []
+    scored_markets = []
+    start_time = time.time()
+
+    try:
+        # Step 1: Fetch and filter for reward eligibility
+        print(f"Step 1: Fetching markets and filtering for reward eligibility...")
+        for market in gamma.iter_markets(limit=100, closed=False):
+            markets_fetched += 1
+
+            if reward_eligible(market, cfg):
+                eligible_markets.append(market)
+
+            # Continue fetching until we have enough or hit practical limit
+            if markets_fetched >= 1000:
+                break
+
+        print(f"  Found {len(eligible_markets)} eligible markets from {markets_fetched} total")
+
+        # Step 2: Apply capital feasibility filter and scoring
+        print(f"Step 2: Computing capital feasibility and scores...")
+        for market in eligible_markets:
+            cap_feasibility = compute_cap_feasibility(market, cfg)
+
+            if cap_feasibility['feasible']:
+                score = compute_market_score(market, cap_feasibility)
+
+                # Parse outcome token mapping
+                token_map = parse_outcome_token_map(market)
+
+                scored_market = {
+                    'slug': market.get('slug'),
+                    'conditionId': market.get('conditionId'),
+                    'rewardsMinSize': market.get('rewardsMinSize'),
+                    'rewardsMaxSpread': market.get('rewardsMaxSpread'),
+                    'outcome_token_map': token_map,
+                    'score': score,
+                    'cap_feasibility': cap_feasibility,
+                    'features': {
+                        'oneHourPriceChange': market.get('oneHourPriceChange'),
+                        'competitive': market.get('competitive'),
+                        'volume24hrClob': market.get('volume24hrClob'),
+                        'liquidityClob': market.get('liquidityClob'),
+                        'endDate': market.get('endDate')
+                    }
+                }
+                scored_markets.append(scored_market)
+
+        print(f"  Found {len(scored_markets)} cap-feasible markets")
+
+        # Step 3: Sort by score (highest first) and select top N
+        scored_markets.sort(key=lambda x: x['score'], reverse=True)
+        top_markets = scored_markets[:num_markets]
+
+        print(f"\\nTop {len(top_markets)} selected markets by score:")
+        for i, market in enumerate(top_markets):
+            print(f"{i+1}. {market['slug']} | score={market['score']:.3f}")
+
+        # Step 4: Write to file if requested
+        if args.write:
+            print(f"\\nWriting to data/target_markets.json...")
+            os.makedirs('data', exist_ok=True)
+
+            # Build output according to schema from PRD section 15.1
+            output_data = {
+                'ts': time.time(),
+                'total_fetched': markets_fetched,
+                'total_eligible': len(eligible_markets),
+                'per_market_cap': scored_markets[0]['cap_feasibility']['per_market_cap'] if scored_markets else 0,
+                'topN': []
+            }
+
+            for market in top_markets:
+                top_market = {
+                    'slug': market['slug'],
+                    'conditionId': market['conditionId'],
+                    'rewardsMinSize': market['rewardsMinSize'],
+                    'rewardsMaxSpread': market['rewardsMaxSpread'],
+                    'outcome_token_map': market['outcome_token_map'],
+                    'score': market['score'],
+                    'features': market['features']
+                }
+                output_data['topN'].append(top_market)
+
+            with open('data/target_markets.json', 'w', encoding='utf-8') as f:
+                json.dump(output_data, f, indent=2)
+
+            print(f"  Wrote {len(top_markets)} markets to data/target_markets.json")
+
+    except Exception as e:
+        print(f"ERROR: Failed to select markets: {e}")
+        error_record = {
+            'ts': time.time(),
+            'kind': 'select_top_n',
+            'status': 'error',
+            'markets_fetched': markets_fetched,
+            'eligible_count': len(eligible_markets),
+            'scored_count': len(scored_markets),
+            'error': str(e)
+        }
+        append_jsonl('logs/selector.jsonl', error_record)
+        return
+
+    elapsed_time = time.time() - start_time
+
+    # Append success record to JSONL
+    select_record = {
+        'ts': time.time(),
+        'kind': 'select_top_n',
+        'status': 'success',
+        'markets_fetched': markets_fetched,
+        'eligible_count': len(eligible_markets),
+        'cap_feasible_count': len(scored_markets),
+        'selected_count': len(top_markets),
+        'elapsed_sec': elapsed_time,
+        'config_used': cfg,
+        'top_slugs': [m['slug'] for m in top_markets],
+        'top_scores': [m['score'] for m in top_markets]
+    }
+    append_jsonl('logs/selector.jsonl', select_record)
+
+
 def main():
     """Main entry point for selector CLI."""
     setup_logging()
@@ -302,12 +509,26 @@ def main():
         help='Maximum number of markets to fetch for eligibility filtering (default: 200)'
     )
 
+    # Select top markets
+    parser.add_argument(
+        '--select-top',
+        action='store_true',
+        help='Select top N markets by scoring and optionally write to data/target_markets.json'
+    )
+    parser.add_argument(
+        '--write',
+        action='store_true',
+        help='Write results to data/target_markets.json (use with --select-top)'
+    )
+
     args = parser.parse_args()
 
     if args.gamma_smoke:
         cmd_gamma_smoke(args)
     elif args.list_eligible:
         cmd_list_eligible(args)
+    elif args.select_top:
+        cmd_select_top(args)
     else:
         parser.print_help()
 

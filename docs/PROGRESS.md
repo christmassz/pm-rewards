@@ -190,3 +190,37 @@
 **Next deliverable**
 
 * D4: Selector scoring and top-3 write (T4)
+
+---
+
+### 2026-01-11T15:00:16Z — T4 Selector scoring and top-3 write completed
+
+**Goal for this increment**
+
+* Implement capital feasibility check, stability-first scoring function, top-N selection, and write data/target_markets.json with proper schema.
+
+**Deliverables completed**
+
+* T4: Selector scoring and top-3 write
+
+**Changes (files)**
+
+* src/selector.py (appended compute_cap_feasibility function implementing PRD section 7 logic, compute_market_score function implementing PRD section 8 scoring formula, cmd_select_top command, CLI support for --select-top --write)
+
+**Commands run**
+
+* python -m src selector --select-top --write
+
+**Observed output**
+
+* Successfully scored 217 cap-feasible markets from 425 eligible; printed exactly 3 chosen slugs with scores; data/target_markets.json contains exactly 3 markets with proper schema; appended one JSONL line to logs/selector.jsonl with kind="select_top_n"
+
+**Artifacts produced**
+
+* src/selector.py with compute_cap_feasibility() and compute_market_score() functions
+* data/target_markets.json with 3 selected markets
+* logs/selector.jsonl (with select_top_n entry)
+
+**Next deliverable**
+
+* D5: CLOB read-only utilities + midpoint proxy (T5)
