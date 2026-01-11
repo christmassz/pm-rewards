@@ -1,1 +1,6 @@
 {"ts": 1768088969.8953202, "kind": "gamma_smoke", "status": "success", "markets_fetched": 5, "elapsed_sec": 0.48812222480773926, "requested_n": 5}
+{"ts": 1768089595.91854, "kind": "list_eligible", "status": "success", "markets_fetched": 200, "eligible_count": 0, "elapsed_sec": 0.8646500110626221, "fetch_limit": 200, "config_used": {"exclude_restricted": true, "end_date_buffer_days": 7, "min_volume24h": 500.0}}
+{"ts": 1768089605.764771, "kind": "gamma_smoke", "status": "success", "markets_fetched": 3, "elapsed_sec": 0.40740203857421875, "requested_n": 3}
+{"ts": 1768089651.8956742, "kind": "list_eligible", "status": "success", "markets_fetched": 20, "eligible_count": 0, "elapsed_sec": 0.3990802764892578, "fetch_limit": 20, "config_used": {"exclude_restricted": true, "end_date_buffer_days": 7, "min_volume24h": 500.0}}
+{"ts": 1768089684.24593, "kind": "list_eligible", "status": "success", "markets_fetched": 20, "eligible_count": 3, "elapsed_sec": 0.5189571380615234, "fetch_limit": 20, "config_used": {"exclude_restricted": false, "end_date_buffer_days": 0, "min_volume24h": 0.0}}
+{"ts": 1768089740.6580439, "kind": "list_eligible", "status": "success", "markets_fetched": 200, "eligible_count": 0, "elapsed_sec": 0.7770829200744629, "fetch_limit": 200, "config_used": {"exclude_restricted": true, "end_date_buffer_days": 7, "min_volume24h": 500.0}}

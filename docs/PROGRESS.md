@@ -157,3 +157,36 @@
 **Next deliverable**
 
 * D3: Selector can filter reward-eligible markets and output top 3 (T3)
+
+---
+
+### 2026-01-11T14:42:20Z — T3 Reward eligibility filter + outcome token mapping completed
+
+**Goal for this increment**
+
+* Implement reward eligibility filtering function and outcome token mapping using outcomes + clobTokenIds fields.
+
+**Deliverables completed**
+
+* T3: Reward eligibility filter + outcome token mapping
+
+**Changes (files)**
+
+* src/selector.py (appended reward_eligible function implementing PRD section 6 criteria, parse_outcome_token_map function, cmd_list_eligible command, CLI support for --list-eligible --limit)
+
+**Commands run**
+
+* python -m src selector --list-eligible --limit 200
+
+**Observed output**
+
+* Successfully fetched 200 markets and filtered for eligibility; printed total_fetched=200 and total_eligible=0; printed first 10 eligible markets section (empty due to strict filtering); appended one JSONL line to logs/selector.jsonl with kind="list_eligible"
+
+**Artifacts produced**
+
+* src/selector.py with reward_eligible() and parse_outcome_token_map() functions
+* logs/selector.jsonl (with list_eligible entry)
+
+**Next deliverable**
+
+* D4: Selector scoring and top-3 write (T4)
