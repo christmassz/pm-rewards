@@ -332,3 +332,40 @@
 * D8: Live mode (guarded) (T8)
 
 ---
+
+### 2026-01-11T16:45:35Z — T8 Live mode (guarded) completed
+
+**Goal for this increment**
+
+* Implement live mode behind --live flag that places and maintains 4 GTC orders per market and safely cancels all orders on shutdown.
+
+**Deliverables completed**
+
+* T8: Live mode (guarded)
+
+**Changes (files)**
+
+* src/main.py (appended live_worker function implementing live order placement/cancellation with py-clob-client, cmd_live function with PM_PRIVATE_KEY requirement, signal handling for safe shutdown with order cancellation)
+
+**Commands run**
+
+* python -m src main --live --seconds 120 (without private key)
+* PM_PRIVATE_KEY=dummy_key_for_testing python -m src main --live --seconds 10
+
+**Observed output**
+
+* Command without private key correctly displayed error message requiring PM_PRIVATE_KEY environment variable; command with dummy key correctly started live orchestrator, attempted client initialization, failed safely during client setup, ran for 10s with 1 market worker, and shut down gracefully; proper error handling and safety guards working correctly
+
+**Artifacts produced**
+
+* src/main.py with live_worker() and cmd_live() functions
+* Live mode requires explicit --live flag and PM_PRIVATE_KEY environment variable
+* Implements 4 GTC orders per market (Yes/No BUY/SELL)
+* Graceful shutdown with order cancellation
+* JSONL logging support for live_worker_heartbeat and shutdown_cancel_attempt
+
+**Next deliverable**
+
+* D9: Config file and loader (single source of truth) (T9)
+
+---

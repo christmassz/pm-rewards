@@ -549,6 +549,313 @@ def cmd_paper(args) -> None:
         print("All workers stopped")
 
 
+def live_worker(slug: str, stop_event: threading.Event, worker_config: Dict[str, Any], private_key: str) -> None:
+    """
+    Live trading worker for a single market.
+
+    Places and maintains 4 GTC orders (Yes/No BUY/SELL) until stop_event is set.
+    """
+    logger.info(f"Starting live worker for market: {slug}")
+
+    try:
+        # Load target markets to get market info
+        target_markets = load_target_markets()
+        market = None
+        for m in target_markets:
+            if m.get('slug') == slug:
+                market = m
+                break
+
+        if not market:
+            logger.warning(f"Market {slug} not found in target markets, worker stopping")
+            return
+
+        # Extract market data
+        outcome_token_map = market.get('outcome_token_map', {})
+        rewards_min_size = market.get('rewardsMinSize', 0)
+        rewards_max_spread = market.get('rewardsMaxSpread', 0.035)
+        condition_id = market.get('conditionId')
+
+        # Create live CLOB client with credentials
+        from py_clob_client import ClobClient
+        from py_clob_client.client import ClobClient
+
+        try:
+            # Initialize live client with private key
+            client = ClobClient("https://clob.polymarket.com", key=private_key)
+            logger.info(f"Live client initialized for market {slug}")
+        except Exception as e:
+            logger.error(f"Failed to initialize live client for {slug}: {e}")
+            return
+
+        # Track active orders
+        active_orders = {}  # {outcome: {side: order_id}}
+
+        while not stop_event.is_set():
+            try:
+                # Fetch order books and compute target quotes
+                from . import clob_utils
+
+                mids = {}
+                target_quotes = {}
+
+                for outcome, token_id in outcome_token_map.items():
+                    order_book = clob_utils.fetch_order_book(client, token_id)
+                    if not order_book:
+                        mids[outcome] = None
+                        continue
+
+                    # Compute midpoint
+                    midpoint = clob_utils.compute_midpoint_proxy(order_book, rewards_min_size)
+                    mids[outcome] = midpoint
+
+                    if midpoint is not None:
+                        # Compute target quotes
+                        half_spread = rewards_max_spread * worker_config.get('half_spread_frac', 0.85)
+                        tick_size = clob_utils.get_tick_size(midpoint)
+
+                        quotes = {
+                            'bid': clob_utils.round_to_tick(midpoint - half_spread, tick_size, 'down'),
+                            'ask': clob_utils.round_to_tick(midpoint + half_spread, tick_size, 'up'),
+                            'size': rewards_min_size * worker_config.get('size_buffer', 1.1)
+                        }
+                        target_quotes[outcome] = quotes
+
+                # Check existing orders and place/replace as needed
+                for outcome, token_id in outcome_token_map.items():
+                    if outcome not in target_quotes:
+                        continue
+
+                    target = target_quotes[outcome]
+
+                    # Initialize order tracking for this outcome
+                    if outcome not in active_orders:
+                        active_orders[outcome] = {'bid': None, 'ask': None}
+
+                    # Check each side (bid/ask)
+                    for side in ['bid', 'ask']:
+                        try:
+                            # Determine order side and price
+                            if side == 'bid':
+                                order_side = 'BUY'
+                                price = target['bid']
+                            else:
+                                order_side = 'SELL'
+                                price = target['ask']
+
+                            # Check if we need to place/replace order
+                            current_order_id = active_orders[outcome][side]
+
+                            # Cancel existing order if it exists
+                            if current_order_id:
+                                try:
+                                    client.cancel_order(current_order_id)
+                                    logger.info(f"Cancelled {outcome} {side} order: {current_order_id}")
+                                except Exception as e:
+                                    logger.warning(f"Failed to cancel order {current_order_id}: {e}")
+
+                            # Place new order
+                            order = client.create_order(
+                                token_id=token_id,
+                                price=price,
+                                size=target['size'],
+                                side=order_side,
+                                order_type='GTC'
+                            )
+
+                            if order and 'id' in order:
+                                active_orders[outcome][side] = order['id']
+                                logger.info(f"Placed {outcome} {side} order: {order['id']} @ {price:.4f} size {target['size']}")
+                                print(f"[LIVE {slug}] Placed {outcome} {side}: {order['id']} @ {price:.4f}")
+                            else:
+                                logger.warning(f"Failed to place {outcome} {side} order")
+                                active_orders[outcome][side] = None
+
+                        except Exception as e:
+                            logger.error(f"Error managing {outcome} {side} order: {e}")
+                            active_orders[outcome][side] = None
+
+                # Log heartbeat
+                heartbeat_record = {
+                    'ts': time.time(),
+                    'kind': 'live_worker_heartbeat',
+                    'slug': slug,
+                    'condition_id': condition_id,
+                    'mids': mids,
+                    'target_quotes': target_quotes,
+                    'active_orders': active_orders,
+                    'worker_type': 'live'
+                }
+                append_jsonl('logs/maker.jsonl', heartbeat_record)
+
+                # Print heartbeat to console
+                total_orders = sum(1 for outcome_orders in active_orders.values()
+                                 for order_id in outcome_orders.values() if order_id)
+                print(f"[LIVE {slug}] Heartbeat: {total_orders} active orders, mids: {mids}")
+
+            except Exception as e:
+                logger.warning(f"Live worker {slug} iteration failed: {e}")
+
+            # Sleep until next iteration (with early exit on stop)
+            for _ in range(int(worker_config.get('worker_heartbeat_interval_sec', 30.0))):
+                if stop_event.is_set():
+                    break
+                time.sleep(1.0)
+
+        # Cleanup: cancel all active orders on shutdown
+        print(f"[LIVE {slug}] Shutting down, cancelling all orders...")
+        cancelled_count = 0
+        failed_count = 0
+
+        for outcome in active_orders:
+            for side in ['bid', 'ask']:
+                order_id = active_orders[outcome].get(side)
+                if order_id:
+                    try:
+                        client.cancel_order(order_id)
+                        logger.info(f"Cancelled {outcome} {side} order on shutdown: {order_id}")
+                        cancelled_count += 1
+                    except Exception as e:
+                        logger.error(f"Failed to cancel order {order_id} on shutdown: {e}")
+                        failed_count += 1
+
+        # Log shutdown attempt
+        shutdown_record = {
+            'ts': time.time(),
+            'kind': 'shutdown_cancel_attempt',
+            'slug': slug,
+            'condition_id': condition_id,
+            'orders_cancelled': cancelled_count,
+            'orders_failed': failed_count,
+            'worker_type': 'live'
+        }
+        append_jsonl('logs/maker.jsonl', shutdown_record)
+
+        print(f"[LIVE {slug}] Shutdown complete: {cancelled_count} orders cancelled, {failed_count} failed")
+        logger.info(f"Live worker for {slug} stopping: {cancelled_count} cancelled, {failed_count} failed")
+
+    except Exception as e:
+        logger.error(f"Live worker {slug} failed: {e}")
+
+
+def cmd_live(args) -> None:
+    """
+    Run live mode orchestrator.
+
+    Requires PM_PRIVATE_KEY environment variable.
+    Places and maintains 4 GTC orders per market.
+    """
+    print(f"Starting live mode orchestrator for {args.seconds} seconds")
+
+    # Check for private key
+    private_key = os.getenv('PM_PRIVATE_KEY')
+    if not private_key:
+        print("ERROR: PM_PRIVATE_KEY environment variable is required for live mode")
+        print("Usage: PM_PRIVATE_KEY=your_key python -m src.main --live --seconds 120")
+        return
+
+    # Initialize database
+    db_path = init_database()
+    config = get_default_config()
+    config['worker_heartbeat_interval_sec'] = 30.0  # Slower for live mode
+
+    # Set up signal handler for graceful shutdown
+    shutdown = [False]
+    worker_futures = []
+    executor = None
+
+    def signal_handler(signum, frame):
+        print("\nReceived interrupt signal, shutting down gracefully...")
+        print("Cancelling all open orders...")
+        shutdown[0] = True
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    try:
+        start_time = time.time()
+
+        # Load target markets and set them as active if none exist
+        target_markets = load_target_markets()
+        if not target_markets:
+            print("ERROR: No target markets found in data/target_markets.json")
+            print("Run selector first: python -m src.selector --select-top --write")
+            return
+
+        active_markets = get_active_markets(db_path)
+
+        if not active_markets and target_markets:
+            print("No active markets found, initializing with top 3 from selector")
+            now = time.time()
+            for market in target_markets[:config['num_markets']]:
+                upsert_active_market(
+                    db_path,
+                    market['conditionId'],
+                    market['slug'],
+                    now,
+                    market['score']
+                )
+
+        # Start thread pool for workers
+        max_live_markets = 1  # Start with 1 market for live mode safety
+        executor = ThreadPoolExecutor(max_workers=max_live_markets)
+        stop_events = {}
+
+        while not shutdown[0]:
+            elapsed = time.time() - start_time
+
+            # Check if we've exceeded time limit
+            if elapsed >= args.seconds:
+                print(f"Time limit reached ({args.seconds}s), stopping orchestrator")
+                break
+
+            # Get current active markets (limit to 1 for safety)
+            active_markets = get_active_markets(db_path)
+            target_workers = {market['slug'] for market in active_markets[:max_live_markets]}
+
+            # Ensure we have exactly the right number of workers
+            current_workers = set(stop_events.keys())
+
+            # Stop workers for markets no longer active
+            for slug in current_workers - target_workers:
+                print(f"Stopping live worker for removed market: {slug}")
+                stop_events[slug].set()
+                del stop_events[slug]
+
+            # Start workers for new markets
+            for slug in target_workers - current_workers:
+                print(f"Starting live worker for new market: {slug}")
+                stop_event = threading.Event()
+                stop_events[slug] = stop_event
+                future = executor.submit(live_worker, slug, stop_event, config, private_key)
+                worker_futures.append(future)
+
+            print(f"[{elapsed:.1f}s] Active live workers: {len(stop_events)} markets: {list(target_workers)}")
+
+            # Sleep until next check
+            time.sleep(config['poll_interval_sec'])
+
+        print(f"\nLive orchestrator completed: {elapsed:.1f}s")
+
+    except Exception as e:
+        print(f"ERROR: Live orchestrator failed: {e}")
+        return
+
+    finally:
+        # Clean shutdown
+        print("Stopping all live workers and cancelling orders...")
+
+        # Stop all workers
+        for stop_event in stop_events.values():
+            stop_event.set()
+
+        # Wait for workers to finish (they will cancel orders)
+        if executor:
+            executor.shutdown(wait=True)
+
+        print("All live workers stopped")
+
+
 def main():
     """Main entry point for orchestrator CLI."""
     setup_logging()
@@ -580,9 +887,7 @@ def main():
     args = parser.parse_args()
 
     if args.live:
-        print("ERROR: Live mode not yet implemented")
-        parser.print_help()
-        return
+        cmd_live(args)
     elif args.paper:
         cmd_paper(args)
     else:
