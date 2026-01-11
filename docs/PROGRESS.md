@@ -448,3 +448,39 @@
 * D11: Live trading integration tests (T11)
 
 ---
+
+### 2026-01-11T17:03:16Z — T11 SQLite schema + db helper (restart-safe) completed
+
+**Goal for this increment**
+
+* Extract database functionality into separate module and provide restart-safe SQLite operations for the orchestrator.
+
+**Deliverables completed**
+
+* T11: SQLite schema + db helper (restart-safe)
+
+**Changes (files)**
+
+* src/db.py (created with init_database, get_state, set_state, get_active_markets, upsert_active_market, remove_active_market, get_open_orders, upsert_open_order, validate_database_schema functions)
+* src/main.py (removed duplicate database functions; added import from db module; updated all database function calls to use db module)
+
+**Commands run**
+
+* python -m src.main --paper --seconds 5
+
+**Observed output**
+
+* Successfully ran paper orchestrator for 5 seconds; database initialized with message "Database initialized: data/pm_mm.db"; started 3 workers for markets; workers produced heartbeats; clean shutdown completed; database file created with correct schema containing required tables: runtime_state, active_markets, open_orders
+
+**Artifacts produced**
+
+* src/db.py with comprehensive SQLite utilities
+* data/pm_mm.db SQLite database with required schema
+* Refactored src/main.py using centralized database module
+* All database operations now use centralized db helper functions
+
+**Next deliverable**
+
+* D12: Clean shutdown behavior (paper + live) (T12)
+
+---

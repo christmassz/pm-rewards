@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 7
+iteration: 8
 max_iterations: 50
 completion_promise: null
 started_at: "2026-01-10T23:58:08Z"

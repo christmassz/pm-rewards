@@ -10,7 +10,6 @@ import json
 import time
 import logging
 import os
-import sqlite3
 import threading
 import signal
 import sys
@@ -20,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from . import selector
 from . import maker
 from .logging_utils import append_jsonl
+from . import db
 
 logger = logging.getLogger(__name__)
 
@@ -30,140 +30,6 @@ def setup_logging():
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-
-
-def ensure_data_dir():
-    """Ensure data directory exists."""
-    os.makedirs('data', exist_ok=True)
-
-
-def init_database() -> str:
-    """
-    Initialize SQLite database with required tables.
-
-    Returns:
-        Path to database file
-    """
-    ensure_data_dir()
-    db_path = 'data/pm_mm.db'
-
-    conn = sqlite3.connect(db_path)
-    try:
-        # Create runtime_state table
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS runtime_state (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL
-            )
-        ''')
-
-        # Create active_markets table
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS active_markets (
-                condition_id TEXT PRIMARY KEY,
-                slug TEXT NOT NULL,
-                entered_at REAL NOT NULL,
-                score_at_entry REAL NOT NULL
-            )
-        ''')
-
-        # Create open_orders table (for future live mode)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS open_orders (
-                order_id TEXT PRIMARY KEY,
-                condition_id TEXT NOT NULL,
-                token_id TEXT NOT NULL,
-                side TEXT NOT NULL,
-                price REAL NOT NULL,
-                size REAL NOT NULL,
-                status TEXT NOT NULL,
-                created_at REAL NOT NULL,
-                updated_at REAL NOT NULL
-            )
-        ''')
-
-        conn.commit()
-        logger.info(f"Database initialized: {db_path}")
-        return db_path
-
-    finally:
-        conn.close()
-
-
-def get_state(db_path: str, key: str) -> Optional[str]:
-    """Get value from runtime_state table."""
-    conn = sqlite3.connect(db_path)
-    try:
-        cursor = conn.execute('SELECT value FROM runtime_state WHERE key = ?', (key,))
-        row = cursor.fetchone()
-        return row[0] if row else None
-    finally:
-        conn.close()
-
-
-def set_state(db_path: str, key: str, value: str) -> None:
-    """Set value in runtime_state table."""
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.execute(
-            'INSERT OR REPLACE INTO runtime_state (key, value) VALUES (?, ?)',
-            (key, value)
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def get_active_markets(db_path: str) -> List[Dict[str, Any]]:
-    """Get list of active markets from database."""
-    conn = sqlite3.connect(db_path)
-    try:
-        cursor = conn.execute('''
-            SELECT condition_id, slug, entered_at, score_at_entry
-            FROM active_markets
-        ''')
-        rows = cursor.fetchall()
-        return [
-            {
-                'condition_id': row[0],
-                'slug': row[1],
-                'entered_at': row[2],
-                'score_at_entry': row[3]
-            }
-            for row in rows
-        ]
-    finally:
-        conn.close()
-
-
-def upsert_active_market(
-    db_path: str,
-    condition_id: str,
-    slug: str,
-    entered_at: float,
-    score_at_entry: float
-) -> None:
-    """Insert or update active market record."""
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.execute('''
-            INSERT OR REPLACE INTO active_markets
-            (condition_id, slug, entered_at, score_at_entry)
-            VALUES (?, ?, ?, ?)
-        ''', (condition_id, slug, entered_at, score_at_entry))
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def remove_active_market(db_path: str, condition_id: str) -> None:
-    """Remove market from active_markets table."""
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.execute('DELETE FROM active_markets WHERE condition_id = ?', (condition_id,))
-        conn.commit()
-    finally:
-        conn.close()
 
 
 def load_target_markets() -> List[Dict[str, Any]]:
@@ -203,7 +69,7 @@ def check_rotation_eligible(
 
     From PRD section 10: rotation only if cooldown elapsed.
     """
-    last_rotation_str = get_state(db_path, 'last_rotation_ts')
+    last_rotation_str = db.get_state(db_path, 'last_rotation_ts')
     if not last_rotation_str:
         return True
 
@@ -265,7 +131,7 @@ def run_selector_update(db_path: str, config: Dict[str, Any]) -> bool:
             return False
 
         # Get currently active markets
-        current_active = get_active_markets(db_path)
+        current_active = db.get_active_markets(db_path)
         current_slugs = {market['slug'] for market in current_active}
         new_slugs = {market['slug'] for market in new_targets}
 
@@ -308,10 +174,10 @@ def run_selector_update(db_path: str, config: Dict[str, Any]) -> bool:
             in_market = rotation['in']
 
             # Remove old market
-            remove_active_market(db_path, out_market['condition_id'])
+            db.remove_active_market(db_path, out_market['condition_id'])
 
             # Add new market
-            upsert_active_market(
+            db.upsert_active_market(
                 db_path,
                 in_market['conditionId'],
                 in_market['slug'],
@@ -322,7 +188,7 @@ def run_selector_update(db_path: str, config: Dict[str, Any]) -> bool:
             logger.info(f"Rotated: {out_market['slug']} -> {in_market['slug']}")
 
         # Update last rotation timestamp
-        set_state(db_path, 'last_rotation_ts', str(now))
+        db.set_state(db_path, 'last_rotation_ts', str(now))
 
         return True
 
@@ -414,7 +280,7 @@ def cmd_paper(args) -> None:
     print(f"Starting paper mode orchestrator for {args.seconds} seconds")
 
     # Initialize database
-    db_path = init_database()
+    db_path = db.init_database()
     config = get_default_config()
 
     # Set up signal handler for graceful shutdown
@@ -444,13 +310,13 @@ def cmd_paper(args) -> None:
 
         # Load initial target markets and set them as active if none exist
         target_markets = load_target_markets()
-        active_markets = get_active_markets(db_path)
+        active_markets = db.get_active_markets(db_path)
 
         if not active_markets and target_markets:
             print("No active markets found, initializing with top 3 from selector")
             now = time.time()
             for market in target_markets[:config['num_markets']]:
-                upsert_active_market(
+                db.upsert_active_market(
                     db_path,
                     market['conditionId'],
                     market['slug'],
@@ -492,7 +358,7 @@ def cmd_paper(args) -> None:
                     stop_events.clear()
 
             # Get current active markets
-            active_markets = get_active_markets(db_path)
+            active_markets = db.get_active_markets(db_path)
 
             # Ensure we have exactly 3 workers running
             current_workers = set(stop_events.keys())
@@ -744,7 +610,7 @@ def cmd_live(args) -> None:
         return
 
     # Initialize database
-    db_path = init_database()
+    db_path = db.init_database()
     config = get_default_config()
     config['worker_heartbeat_interval_sec'] = 30.0  # Slower for live mode
 
@@ -771,13 +637,13 @@ def cmd_live(args) -> None:
             print("Run selector first: python -m src.selector --select-top --write")
             return
 
-        active_markets = get_active_markets(db_path)
+        active_markets = db.get_active_markets(db_path)
 
         if not active_markets and target_markets:
             print("No active markets found, initializing with top 3 from selector")
             now = time.time()
             for market in target_markets[:config['num_markets']]:
-                upsert_active_market(
+                db.upsert_active_market(
                     db_path,
                     market['conditionId'],
                     market['slug'],
@@ -799,7 +665,7 @@ def cmd_live(args) -> None:
                 break
 
             # Get current active markets (limit to 1 for safety)
-            active_markets = get_active_markets(db_path)
+            active_markets = db.get_active_markets(db_path)
             target_workers = {market['slug'] for market in active_markets[:max_live_markets]}
 
             # Ensure we have exactly the right number of workers
