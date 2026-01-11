@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 
 from . import selector
 from . import maker
+from .logging_utils import append_jsonl
 
 logger = logging.getLogger(__name__)
 
@@ -34,18 +35,6 @@ def setup_logging():
 def ensure_data_dir():
     """Ensure data directory exists."""
     os.makedirs('data', exist_ok=True)
-
-
-def ensure_logs_dir():
-    """Ensure logs directory exists."""
-    os.makedirs('logs', exist_ok=True)
-
-
-def append_jsonl(filepath: str, obj: Dict[str, Any]) -> None:
-    """Append a JSON object as a single line to a JSONL file."""
-    ensure_logs_dir()
-    with open(filepath, 'a', encoding='utf-8') as f:
-        f.write(json.dumps(obj) + '\n')
 
 
 def init_database() -> str:

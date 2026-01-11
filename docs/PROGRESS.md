@@ -407,3 +407,44 @@
 * D10: Append-only log helper (JSONL contract) (T10)
 
 ---
+
+### 2026-01-11T17:06:15Z — T10 Append-only log helper (JSONL contract) completed
+
+**Goal for this increment**
+
+* Implement centralized JSONL logging utilities to eliminate code duplication across modules and provide thread-safe append-only logging functionality.
+
+**Deliverables completed**
+
+* T10: Append-only log helper (JSONL contract)
+
+**Changes (files)**
+
+* src/logging_utils.py (created with append_jsonl, ensure_logs_dir, read_jsonl, validate_jsonl functions; thread-safe implementation with comprehensive error handling)
+* src/selector.py (removed duplicate append_jsonl and ensure_logs_dir functions; added import from logging_utils)
+* src/maker.py (removed duplicate append_jsonl and ensure_logs_dir functions; added import from logging_utils)
+* src/main.py (removed duplicate append_jsonl and ensure_logs_dir functions; added import from logging_utils)
+
+**Commands run**
+
+* python -m src selector --gamma-smoke --n 1
+* python -m src maker --paper-one --slug "will-trump-nominate-bill-pulte-as-the-next-fed-chair"
+
+**Observed output**
+
+* Successfully fetched 1 market from Gamma API in 0.47s; appended exactly one line to logs/selector.jsonl with kind="gamma_smoke" using centralized logging utility
+* Successfully fetched order books for target market; printed YES/NO midpoints and best bid/ask; appended exactly one line to logs/maker.jsonl with kind="paper_one" using centralized logging utility
+* All modules now use centralized logging_utils.append_jsonl eliminating code duplication
+
+**Artifacts produced**
+
+* src/logging_utils.py with thread-safe JSONL utilities
+* Refactored selector, maker, main modules using centralized logging
+* logs/selector.jsonl (with new gamma_smoke entry from centralized utility)
+* logs/maker.jsonl (with new paper_one entry from centralized utility)
+
+**Next deliverable**
+
+* D11: Live trading integration tests (T11)
+
+---

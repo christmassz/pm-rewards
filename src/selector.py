@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 
 from . import gamma
 from . import config
+from .logging_utils import append_jsonl
 
 
 def setup_logging():
@@ -23,18 +24,6 @@ def setup_logging():
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-
-
-def ensure_logs_dir():
-    """Ensure logs directory exists."""
-    os.makedirs('logs', exist_ok=True)
-
-
-def append_jsonl(filepath: str, obj: Dict[str, Any]) -> None:
-    """Append a JSON object as a single line to a JSONL file."""
-    ensure_logs_dir()
-    with open(filepath, 'a', encoding='utf-8') as f:
-        f.write(json.dumps(obj) + '\n')
 
 
 def get_default_config() -> Dict[str, Any]:
