@@ -294,3 +294,41 @@
 **Next deliverable**
 
 * D7: Orchestrator paper mode: exactly 3 workers + hysteresis (T7)
+
+---
+
+### 2026-01-11T16:42:10Z — T7 Orchestrator paper mode: exactly 3 workers + hysteresis completed
+
+**Goal for this increment**
+
+* Implement main orchestrator with exactly 3 paper workers, selector scheduling, hysteresis-based market rotation, and SQLite persistence.
+
+**Deliverables completed**
+
+* T7: Orchestrator paper mode: exactly 3 workers + hysteresis
+
+**Changes (files)**
+
+* src/main.py (created with orchestrator implementation including SQLite database init, market rotation logic, hysteresis rules, paper worker management, signal handling)
+* src/__main__.py (updated to support main orchestrator command routing)
+
+**Commands run**
+
+* python -m src main --paper --seconds 60
+
+**Observed output**
+
+* Successfully started orchestrator with exactly 3 paper workers for selected markets; printed console heartbeats showing 3 active workers with midpoint data; created data/pm_mm.db with required tables; persisted 3 active markets in database; generated orchestrator_worker_heartbeat JSONL entries; ran for 60s and stopped gracefully; workers fetched order books and computed midpoints every 10s
+
+**Artifacts produced**
+
+* src/main.py with full orchestrator implementation
+* src/__main__.py updated for main command routing
+* data/pm_mm.db SQLite database with runtime_state, active_markets, and open_orders tables
+* logs/maker.jsonl (with orchestrator_worker_heartbeat entries)
+
+**Next deliverable**
+
+* D8: Live mode (guarded) (T8)
+
+---
