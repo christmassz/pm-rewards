@@ -261,3 +261,36 @@
 **Next deliverable**
 
 * D6: Maker paper loop (low churn decisions) (T6)
+
+---
+
+### 2026-01-11T15:22:10Z — T6 Maker paper loop (low churn decisions) completed
+
+**Goal for this increment**
+
+* Implement maker paper loop with continuous monitoring, heartbeat logging, and churn control for quote replacement decisions.
+
+**Deliverables completed**
+
+* T6: Maker paper loop (low churn decisions)
+
+**Changes (files)**
+
+* src/maker.py (appended get_default_config, compute_quote_prices, check_replace_needed, cmd_paper_loop functions; added signal handling, CLI support for --paper-loop --seconds)
+
+**Commands run**
+
+* python -m src maker --paper-loop --slug "will-trump-nominate-bill-pulte-as-the-next-fed-chair" --seconds 120
+
+**Observed output**
+
+* Successfully ran 75 loop iterations in 121.6s; printed multiple heartbeat lines with loop progress and churn decisions; computed quote replacements based on PRD churn rules; logs/maker.jsonl grew with 75 appended heartbeat entries containing kind="paper_loop_heartbeat"
+
+**Artifacts produced**
+
+* src/maker.py with paper loop functionality and churn control
+* logs/maker.jsonl (with 75 paper_loop_heartbeat entries)
+
+**Next deliverable**
+
+* D7: Orchestrator paper mode: exactly 3 workers + hysteresis (T7)
