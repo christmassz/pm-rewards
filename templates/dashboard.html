@@ -630,7 +630,7 @@
                 return;
             }
 
-            const recentLogs = logs.slice(-20).reverse();
+            const recentLogs = logs.slice(-20);
 
             container.innerHTML = recentLogs.map(log => `
                 <div class="log-entry">

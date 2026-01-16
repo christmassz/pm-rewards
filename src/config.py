@@ -57,6 +57,7 @@ class Config:
     rotation_cooldown_sec: int
     min_tenure_sec: int
     score_replace_multiplier: float
+    loop_interval_sec: int
 
     # Nested configs
     quote: QuoteConfig
@@ -96,7 +97,7 @@ def load_config(config_path: str = "config.yaml") -> Config:
         'total_cap_usdc', 'usable_cap_frac', 'num_markets',
         'exclude_restricted', 'end_date_buffer_days', 'min_volume24h',
         'selector_interval_sec', 'poll_interval_sec', 'rotation_cooldown_sec',
-        'min_tenure_sec', 'score_replace_multiplier',
+        'min_tenure_sec', 'score_replace_multiplier', 'loop_interval_sec',
         'quote', 'net', 'live'
     ]
 
@@ -173,6 +174,7 @@ def load_config(config_path: str = "config.yaml") -> Config:
             rotation_cooldown_sec=int(data['rotation_cooldown_sec']),
             min_tenure_sec=int(data['min_tenure_sec']),
             score_replace_multiplier=float(data['score_replace_multiplier']),
+            loop_interval_sec=int(data['loop_interval_sec']),
 
             # Nested configs
             quote=QuoteConfig(
@@ -241,6 +243,7 @@ def get_default_config() -> Config:
         rotation_cooldown_sec=43200,  # 12 hours
         min_tenure_sec=21600,         # 6 hours
         score_replace_multiplier=1.25,
+        loop_interval_sec=600,  # 10 minutes
 
         # Nested configs
         quote=QuoteConfig(
