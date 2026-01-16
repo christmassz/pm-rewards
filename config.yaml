@@ -7,7 +7,7 @@ usable_cap_frac: 0.85
 num_markets: 5
 
 # Market filtering
-exclude_restricted: true
+exclude_restricted: false  # Set to false to allow restricted markets (required for rewards)
 end_date_buffer_days: 7
 min_volume24h: 500.0
 

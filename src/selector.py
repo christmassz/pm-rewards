@@ -28,21 +28,23 @@ def setup_logging():
 
 def get_default_config() -> Dict[str, Any]:
     """
-    Get default configuration values.
+    Load configuration from config.yaml and convert to dict format.
 
-    Later this will load from config.yaml, but for now we use hardcoded defaults
-    matching the config.yaml.example structure.
+    Returns dict with all config values for use by selector functions.
     """
+    cfg = config.load_config_or_default('config.yaml')
+
+    # Convert Config dataclass to dict format expected by selector functions
     return {
-        'exclude_restricted': True,
-        'end_date_buffer_days': 7,
-        'min_volume24h': 500.0,
+        'exclude_restricted': cfg.exclude_restricted,
+        'end_date_buffer_days': cfg.end_date_buffer_days,
+        'min_volume24h': cfg.min_volume24h,
         # Capital parameters
-        'total_cap_usdc': 1000.0,
-        'usable_cap_frac': 0.85,
-        'num_markets': 3,
+        'total_cap_usdc': cfg.total_cap_usdc,
+        'usable_cap_frac': cfg.usable_cap_frac,
+        'num_markets': cfg.num_markets,
         # Quote parameters
-        'size_buffer': 1.1,
+        'size_buffer': cfg.quote.size_buffer,
     }
 
 
