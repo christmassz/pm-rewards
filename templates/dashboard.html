@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PM-REWARDS 3270 TERMINAL</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Mono', 'Courier New', monospace;
+            background: #000000;
+            color: #33ff33;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            font-size: 14px;
+            line-height: 1.2;
+        }
+
+        /* IBM 3270 Terminal Screen Effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(51, 255, 51, 0.03),
+                    rgba(51, 255, 51, 0.03) 1px,
+                    transparent 1px,
+                    transparent 2px
+                );
+        }
+
+        /* CRT Glow Effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            background: radial-gradient(
+                ellipse at center,
+                rgba(51, 255, 51, 0.1) 0%,
+                rgba(51, 255, 51, 0.05) 60%,
+                transparent 100%
+            );
+            box-shadow: inset 0 0 200px rgba(51, 255, 51, 0.1);
+        }
+
+        .terminal {
+            position: relative;
+            z-index: 5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+        }
+
+        /* Terminal Header */
+        .terminal-header {
+            background: #000000;
+            color: #33ff33;
+            padding: 8px 16px;
+            border-bottom: 1px solid #33ff33;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal-title {
+            text-transform: uppercase;
+        }
+
+        .terminal-session {
+            color: #ffff00;
+        }
+
+        /* Main Terminal Body */
+        .terminal-body {
+            flex: 1;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: #000000;
+            border-bottom: 1px solid #33ff33;
+            padding: 8px 16px;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            display: inline-block;
+        }
+
+        .status-indicator.running {
+            background: #33ff33;
+            animation: pulse3270 1.5s infinite;
+        }
+
+        .status-indicator.stopped {
+            background: #ff3333;
+        }
+
+        @keyframes pulse3270 {
+            0%, 70% { opacity: 1; }
+            35% { opacity: 0.3; }
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .control-input {
+            background: #000000;
+            border: 1px solid #33ff33;
+            color: #33ff33;
+            padding: 2px 6px;
+            font-family: inherit;
+            font-size: 12px;
+            width: 50px;
+        }
+
+        .control-button {
+            background: #000000;
+            color: #ffff00;
+            border: 1px solid #ffff00;
+            padding: 4px 8px;
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            min-width: 60px;
+        }
+
+        .control-button:hover {
+            background: #ffff00;
+            color: #000000;
+        }
+
+        .control-button:disabled {
+            background: #333333;
+            color: #666666;
+            border-color: #666666;
+            cursor: not-allowed;
+        }
+
+        /* Main Content Area */
+        .content-area {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        /* Left Panel - Markets */
+        .markets-panel {
+            border-right: 1px solid #33ff33;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: #000000;
+            color: #ffff00;
+            padding: 6px 12px;
+            border-bottom: 1px solid #33ff33;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        /* Market Cards */
+        .market-card {
+            margin-bottom: 12px;
+            border: 1px solid #666666;
+            background: #000000;
+        }
+
+        .market-header {
+            background: #000000;
+            color: #ffffff;
+            padding: 6px 8px;
+            border-bottom: 1px solid #666666;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .market-data {
+            padding: 8px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .price-field {
+            text-align: center;
+            padding: 4px;
+            border: 1px solid #666666;
+            min-height: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .price-field.yes {
+            background: #001100;
+            color: #33ff33;
+        }
+
+        .price-field.no {
+            background: #110000;
+            color: #ff6666;
+        }
+
+        .price-label {
+            font-size: 10px;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+        }
+
+        .price-value {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .price-value.null {
+            color: #ffff00;
+        }
+
+        .market-footer {
+            padding: 4px 8px;
+            font-size: 10px;
+            color: #999999;
+            border-top: 1px solid #666666;
+            text-align: center;
+        }
+
+        /* Right Panel - Stats & Logs */
+        .info-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .stats-section {
+            border-bottom: 1px solid #33ff33;
+        }
+
+        .stats-grid {
+            padding: 8px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-field {
+            text-align: center;
+            padding: 6px;
+            border: 1px solid #666666;
+            background: #000000;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffff00;
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: #999999;
+            text-transform: uppercase;
+        }
+
+        /* Logs Section */
+        .logs-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .logs-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            background: #000000;
+        }
+
+        .log-entry {
+            font-size: 10px;
+            margin-bottom: 2px;
+            line-height: 1.3;
+            word-break: break-word;
+        }
+
+        .log-time {
+            color: #ffff00;
+            margin-right: 6px;
+        }
+
+        .log-message {
+            color: #33ff33;
+        }
+
+        /* Bottom Status Line */
+        .status-line {
+            background: #000000;
+            color: #33ff33;
+            padding: 4px 16px;
+            border-top: 1px solid #33ff33;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .function-keys {
+            display: flex;
+            gap: 12px;
+        }
+
+        .function-key {
+            color: #ffff00;
+        }
+
+        .cursor-position {
+            color: #999999;
+        }
+
+        /* Alert Messages */
+        .alert {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #000000;
+            border: 2px solid #ffff00;
+            color: #ffff00;
+            padding: 16px 24px;
+            z-index: 20;
+            font-weight: bold;
+            text-align: center;
+            animation: alertBlink 2s infinite;
+        }
+
+        @keyframes alertBlink {
+            0%, 70% { border-color: #ffff00; }
+            35% { border-color: #ff3333; }
+        }
+
+        .no-data {
+            text-align: center;
+            color: #666666;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .content-area {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 200px;
+            }
+
+            .info-panel {
+                border-top: 1px solid #33ff33;
+                border-right: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                font-size: 12px;
+            }
+
+            .status-bar {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .controls {
+                justify-self: center;
+            }
+
+            .function-keys {
+                display: none;
+            }
+        }
+
+        /* Cursor blink effect */
+        .cursor {
+            animation: cursorBlink 1s infinite;
+        }
+
+        @keyframes cursorBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <div class="terminal-header">
+            <div class="terminal-title">PM-REWARDS TRADING MONITOR</div>
+            <div class="terminal-session">SESSION: LIVE</div>
+        </div>
+
+        <div class="terminal-body">
+            <div class="status-bar">
+                <div class="system-status">
+                    <span class="status-indicator" id="statusDot"></span>
+                    <span id="statusText">SYSTEM INITIALIZING...</span>
+                    <span id="uptimeText"></span>
+                </div>
+                <div class="controls">
+                    <input type="number" class="control-input" id="durationInput" value="300" min="30" max="3600">
+                    <span style="color: #999999; font-size: 10px;">SEC</span>
+                    <button class="control-button" id="startBtn" onclick="startApplication()">START</button>
+                    <button class="control-button" id="stopBtn" onclick="stopApplication()">STOP</button>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div class="markets-panel">
+                    <div class="panel-header">Active Markets</div>
+                    <div class="panel-content" id="marketsContainer">
+                        <div class="no-data">NO ACTIVE MARKETS</div>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <div class="stats-section">
+                        <div class="panel-header">Statistics</div>
+                        <div class="stats-grid">
+                            <div class="stat-field">
+                                <div class="stat-value" id="activeWorkers">0</div>
+                                <div class="stat-label">Workers</div>
+                            </div>
+                            <div class="stat-field">
+                                <div class="stat-value" id="totalMarkets">0</div>
+                                <div class="stat-label">Markets</div>
+                            </div>
+                            <div class="stat-field">
+                                <div class="stat-value" id="lastUpdate">--:--:--</div>
+                                <div class="stat-label">Last Update</div>
+                            </div>
+                            <div class="stat-field">
+                                <div class="stat-value" id="systemTime">--:--:--</div>
+                                <div class="stat-label">System Time</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="logs-section">
+                        <div class="panel-header">System Log</div>
+                        <div class="logs-content" id="logsContainer">
+                            <div class="no-data">SYSTEM READY</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-line">
+                <div class="function-keys">
+                    <span class="function-key">F1=HELP</span>
+                    <span class="function-key">F2=REFRESH</span>
+                    <span class="function-key">F3=EXIT</span>
+                </div>
+                <div class="cursor-position">ROW: 01 COL: 01</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="alertContainer"></div>
+
+    <script>
+        let eventSource = null;
+        let dashboardData = {};
+
+        function initEventSource() {
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            eventSource = new EventSource('/events');
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'status') {
+                        updateDashboard(data.data);
+                    } else if (data.type === 'log') {
+                        addLogEntry(data.data, data.timestamp);
+                    }
+                } catch (error) {
+                    console.error('Error parsing event data:', error);
+                }
+            };
+
+            eventSource.onerror = function(event) {
+                console.error('EventSource failed:', event);
+                setTimeout(initEventSource, 5000);
+            };
+        }
+
+        function updateDashboard(data) {
+            dashboardData = data;
+
+            // Update status
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const uptimeText = document.getElementById('uptimeText');
+
+            statusDot.className = `status-indicator ${data.status}`;
+
+            if (data.status === 'running') {
+                statusText.textContent = 'SYSTEM OPERATIONAL';
+            } else {
+                statusText.textContent = 'SYSTEM STANDBY';
+            }
+
+            if (data.status === 'running' && data.uptime) {
+                const minutes = Math.floor(data.uptime / 60);
+                const seconds = Math.floor(data.uptime % 60);
+                uptimeText.textContent = `UPTIME: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                uptimeText.textContent = '';
+            }
+
+            // Update controls
+            document.getElementById('startBtn').disabled = data.status === 'running';
+            document.getElementById('stopBtn').disabled = data.status === 'stopped';
+
+            // Update markets
+            updateMarkets(data.markets || {});
+
+            // Update stats
+            document.getElementById('activeWorkers').textContent = data.active_workers || 0;
+            document.getElementById('totalMarkets').textContent = Object.keys(data.markets || {}).length;
+            document.getElementById('lastUpdate').textContent = data.last_update || '--:--:--';
+
+            // Update system time
+            const now = new Date();
+            document.getElementById('systemTime').textContent = now.toTimeString().slice(0, 8);
+
+            // Update logs
+            updateLogs(data.logs || []);
+        }
+
+        function updateMarkets(markets) {
+            const container = document.getElementById('marketsContainer');
+
+            if (Object.keys(markets).length === 0) {
+                container.innerHTML = '<div class="no-data">NO ACTIVE MARKETS</div>';
+                return;
+            }
+
+            container.innerHTML = Object.entries(markets).map(([slug, market]) => {
+                const yesPrice = market.prices.Yes;
+                const noPrice = market.prices.No;
+
+                return `
+                    <div class="market-card">
+                        <div class="market-header">${market.name}</div>
+                        <div class="market-data">
+                            <div class="price-field yes">
+                                <div class="price-label">YES</div>
+                                <div class="price-value ${yesPrice === null ? 'null' : ''}">${yesPrice !== null ? yesPrice.toFixed(3) : 'N/A'}</div>
+                            </div>
+                            <div class="price-field no">
+                                <div class="price-label">NO</div>
+                                <div class="price-value ${noPrice === null ? 'null' : ''}">${noPrice !== null ? noPrice.toFixed(3) : 'N/A'}</div>
+                            </div>
+                        </div>
+                        <div class="market-footer">LAST: ${market.last_heartbeat || 'NEVER'}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateLogs(logs) {
+            const container = document.getElementById('logsContainer');
+
+            if (logs.length === 0) {
+                container.innerHTML = '<div class="no-data">SYSTEM READY</div>';
+                return;
+            }
+
+            const recentLogs = logs.slice(-20).reverse();
+
+            container.innerHTML = recentLogs.map(log => `
+                <div class="log-entry">
+                    <span class="log-time">${log.time}</span>
+                    <span class="log-message">${escapeHtml(log.message)}</span>
+                </div>
+            `).join('');
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function startApplication() {
+            const duration = document.getElementById('durationInput').value;
+
+            fetch(`/api/start/${duration}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert(`SYSTEM STARTED - DURATION: ${duration}S`);
+                    } else {
+                        showAlert('START SEQUENCE FAILED');
+                    }
+                })
+                .catch(error => {
+                    showAlert('COMMUNICATION ERROR');
+                });
+        }
+
+        function stopApplication() {
+            fetch('/api/stop')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('SYSTEM TERMINATED');
+                    } else {
+                        showAlert('TERMINATION FAILED');
+                    }
+                })
+                .catch(error => {
+                    showAlert('COMMUNICATION ERROR');
+                });
+        }
+
+        function showAlert(message) {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = 'alert';
+            alert.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initEventSource();
+
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => updateDashboard(data))
+                .catch(error => console.error('Error loading initial status:', error));
+
+            // Update system time every second
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('systemTime').textContent = now.toTimeString().slice(0, 8);
+            }, 1000);
+        });
+
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
+
+        // Handle function keys
+        document.addEventListener('keydown', function(event) {
+            switch(event.key) {
+                case 'F1':
+                    event.preventDefault();
+                    showAlert('PM-REWARDS TRADING MONITOR V1.0');
+                    break;
+                case 'F2':
+                    event.preventDefault();
+                    location.reload();
+                    break;
+                case 'F3':
+                    event.preventDefault();
+                    if (confirm('EXIT APPLICATION?')) {
+                        window.close();
+                    }
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

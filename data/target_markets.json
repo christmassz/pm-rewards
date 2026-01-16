@@ -1,62 +1,7 @@
 {
-  "ts": 1768090016.5541902,
+  "ts": 1768167262.234702,
   "total_fetched": 1000,
-  "total_eligible": 425,
-  "per_market_cap": 283.3333333333333,
-  "topN": [
-    {
-      "slug": "will-trump-nominate-bill-pulte-as-the-next-fed-chair",
-      "conditionId": "0xc82669901de7cb0be25c1d8de39fbbe8e2ddc0aacba0a30a663ed13c3b9eb06d",
-      "rewardsMinSize": 20,
-      "rewardsMaxSpread": 0.035,
-      "outcome_token_map": {
-        "Yes": "8707393418896465550537491004148945001566800949202710797124018851880453264457",
-        "No": "94510018566326311535078510027670826542694234094667353545772489266243635794064"
-      },
-      "score": 23.56584063703085,
-      "features": {
-        "oneHourPriceChange": 0.0,
-        "competitive": 0.8006398713852111,
-        "volume24hrClob": 8313067.627,
-        "liquidityClob": 166593.57543,
-        "endDate": "2026-12-31T00:00:00Z"
-      }
-    },
-    {
-      "slug": "will-the-carolina-panthers-win-super-bowl-2026",
-      "conditionId": "0xb232c915770ea41eb3ec3dbb2c7209c727759237383850f51045be7ffa3975e5",
-      "rewardsMinSize": 50,
-      "rewardsMaxSpread": 0.045,
-      "outcome_token_map": {
-        "Yes": "26875704435144560123124814164931171497339462799728449796809868985717551034984",
-        "No": "27110946212212220543885771558729072300747406628273094439631175059267259915499"
-      },
-      "score": 22.33585204356694,
-      "features": {
-        "oneHourPriceChange": 0.0045,
-        "competitive": 0.8054303726585385,
-        "volume24hrClob": 1539589.1612510001,
-        "liquidityClob": 342049.58765,
-        "endDate": "2026-02-08T12:00:00Z"
-      }
-    },
-    {
-      "slug": "will-raul-perestrello-win-the-2026-portugal-presidential-election",
-      "conditionId": "0x3b1a3232b14a029f96a3e1b04a5d8dde31575d74024389b53631e73b4a494480",
-      "rewardsMinSize": 20,
-      "rewardsMaxSpread": 0.035,
-      "outcome_token_map": {
-        "Yes": "100873440839630488787675306991927169852104936846951905917156069066481005498699",
-        "No": "85845913338874356389169581070714431760388168444378600269400508336199873583319"
-      },
-      "score": 20.589731493692323,
-      "features": {
-        "oneHourPriceChange": 0.0,
-        "competitive": 0.8003199679231757,
-        "volume24hrClob": 583673.7300000001,
-        "liquidityClob": 87781.80446,
-        "endDate": "2026-01-25T14:00:00Z"
-      }
-    }
-  ]
+  "total_eligible": 0,
+  "per_market_cap": 0,
+  "topN": []
 }
