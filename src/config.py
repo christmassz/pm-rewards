@@ -50,6 +50,7 @@ class Config:
     exclude_restricted: bool
     end_date_buffer_days: int
     min_volume24h: float
+    max_book_spread: float
 
     # Timing parameters
     selector_interval_sec: int
@@ -140,6 +141,9 @@ def load_config(config_path: str = "config.yaml") -> Config:
     if data['min_volume24h'] < 0:
         raise ValueError("min_volume24h must be non-negative")
 
+    if data.get('max_book_spread', 0.8) <= 0:
+        raise ValueError("max_book_spread must be positive")
+
     if quote_data['size_buffer'] <= 0:
         raise ValueError("quote.size_buffer must be positive")
 
@@ -167,6 +171,7 @@ def load_config(config_path: str = "config.yaml") -> Config:
             exclude_restricted=bool(data['exclude_restricted']),
             end_date_buffer_days=int(data['end_date_buffer_days']),
             min_volume24h=float(data['min_volume24h']),
+            max_book_spread=float(data.get('max_book_spread', 0.8)),
 
             # Timing parameters
             selector_interval_sec=int(data['selector_interval_sec']),
@@ -236,6 +241,7 @@ def get_default_config() -> Config:
         exclude_restricted=True,
         end_date_buffer_days=7,
         min_volume24h=500.0,
+        max_book_spread=0.8,
 
         # Timing parameters
         selector_interval_sec=900,   # 15 minutes
@@ -291,6 +297,7 @@ def format_config_for_display(config: Config, redact_secrets: bool = True) -> st
     lines.append(f"  exclude_restricted: {config.exclude_restricted}")
     lines.append(f"  end_date_buffer_days: {config.end_date_buffer_days}")
     lines.append(f"  min_volume24h: {config.min_volume24h}")
+    lines.append(f"  max_book_spread: {config.max_book_spread}")
     lines.append("")
 
     # Timing parameters

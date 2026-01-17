@@ -1,3 +1,6 @@
+# Claude Code settings
+.claude/
+
 # Environment variables (contains secrets)
 .env
 .env.*

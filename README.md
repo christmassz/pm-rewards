@@ -328,13 +328,6 @@ usable_cap_frac: 0.8          # Use 80% (more buffer)
 - **24/7 operation**: Designed to run continuously (use `screen` or `tmux`)
 - **Log growth**: JSONL files grow unbounded (implement log rotation if needed)
 
-### Risk Warnings
-
-- **Market making involves risk** - you can lose money
-- **Impermanent loss** - price movements affect profitability
-- **Smart contract risk** - Polymarket smart contract bugs could cause losses
-- **API dependency** - Polymarket API outages affect operations
-- **Regulatory risk** - ensure compliance with local regulations
 
 ## 📚 Further Reading
 

@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from . import gamma
 from . import config
 from .logging_utils import append_jsonl
+from . import clob_utils
 
 
 def setup_logging():
@@ -39,6 +40,7 @@ def get_default_config() -> Dict[str, Any]:
         'exclude_restricted': cfg.exclude_restricted,
         'end_date_buffer_days': cfg.end_date_buffer_days,
         'min_volume24h': cfg.min_volume24h,
+        'max_book_spread': cfg.max_book_spread,
         # Capital parameters
         'total_cap_usdc': cfg.total_cap_usdc,
         'usable_cap_frac': cfg.usable_cap_frac,
@@ -365,36 +367,54 @@ def cmd_select_top(args) -> None:
 
         # Step 2: Apply capital feasibility filter and scoring
         print(f"Step 2: Computing capital feasibility and scores...")
+        cap_feasible_markets = []
         for market in eligible_markets:
             cap_feasibility = compute_cap_feasibility(market, cfg)
 
             if cap_feasibility['feasible']:
-                score = compute_market_score(market, cap_feasibility)
-
-                # Parse outcome token mapping
                 token_map = parse_outcome_token_map(market)
+                cap_feasible_markets.append((market, cap_feasibility, token_map))
 
-                scored_market = {
-                    'slug': market.get('slug'),
-                    'conditionId': market.get('conditionId'),
-                    'rewardsMinSize': market.get('rewardsMinSize'),
-                    'rewardsMaxSpread': market.get('rewardsMaxSpread'),
-                    'outcome_token_map': token_map,
-                    'score': score,
-                    'cap_feasibility': cap_feasibility,
-                    'features': {
-                        'oneHourPriceChange': market.get('oneHourPriceChange'),
-                        'competitive': market.get('competitive'),
-                        'volume24hrClob': market.get('volume24hrClob'),
-                        'liquidityClob': market.get('liquidityClob'),
-                        'endDate': market.get('endDate')
-                    }
+        print(f"  Found {len(cap_feasible_markets)} cap-feasible markets")
+
+        # Step 3: Filter for two-sided order books (CLOB preflight)
+        print(f"Step 3: Checking for two-sided order books...")
+        clob_client = clob_utils.create_readonly_clob_client()
+        two_sided_rejected = 0
+        max_spread = cfg.get('max_book_spread')
+
+        for market, cap_feasibility, token_map in cap_feasible_markets:
+            is_two_sided, reject_reason = clob_utils.check_market_two_sided(clob_client, token_map, max_spread=max_spread)
+
+            if not is_two_sided:
+                two_sided_rejected += 1
+                print(f"  SKIP: {market.get('slug')} - {reject_reason}")
+                continue
+
+            score = compute_market_score(market, cap_feasibility)
+
+            scored_market = {
+                'slug': market.get('slug'),
+                'conditionId': market.get('conditionId'),
+                'rewardsMinSize': market.get('rewardsMinSize'),
+                'rewardsMaxSpread': market.get('rewardsMaxSpread'),
+                'outcome_token_map': token_map,
+                'score': score,
+                'cap_feasibility': cap_feasibility,
+                'features': {
+                    'oneHourPriceChange': market.get('oneHourPriceChange'),
+                    'competitive': market.get('competitive'),
+                    'volume24hrClob': market.get('volume24hrClob'),
+                    'liquidityClob': market.get('liquidityClob'),
+                    'endDate': market.get('endDate')
                 }
-                scored_markets.append(scored_market)
+            }
+            scored_markets.append(scored_market)
 
-        print(f"  Found {len(scored_markets)} cap-feasible markets")
+        print(f"  Rejected {two_sided_rejected} markets with one-sided books")
+        print(f"  Found {len(scored_markets)} markets with two-sided books")
 
-        # Step 3: Sort by score (highest first) and select top N
+        # Step 4: Sort by score (highest first) and select top N
         scored_markets.sort(key=lambda x: x['score'], reverse=True)
         top_markets = scored_markets[:num_markets]
 
@@ -402,7 +422,7 @@ def cmd_select_top(args) -> None:
         for i, market in enumerate(top_markets):
             print(f"{i+1}. {market['slug']} | score={market['score']:.3f}")
 
-        # Step 4: Write to file if requested
+        # Step 5: Write to file if requested
         if args.write:
             print(f"\\nWriting to data/target_markets.json...")
             os.makedirs('data', exist_ok=True)
@@ -456,7 +476,9 @@ def cmd_select_top(args) -> None:
         'status': 'success',
         'markets_fetched': markets_fetched,
         'eligible_count': len(eligible_markets),
-        'cap_feasible_count': len(scored_markets),
+        'cap_feasible_count': len(cap_feasible_markets),
+        'two_sided_rejected': two_sided_rejected,
+        'two_sided_passed': len(scored_markets),
         'selected_count': len(top_markets),
         'elapsed_sec': elapsed_time,
         'config_used': cfg,
